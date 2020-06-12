@@ -30,7 +30,11 @@ Param(
 	
 	# -h <relative path to artifact html file>
 	[Parameter(Mandatory=$FALSE)]
-	[string]$h = "vulnerabilities.html"
+	[string]$h = "vulnerabilities.html",
+
+    # -reportSeverity <list of severities which will cause a build to fail. Can be any combination of LOW, MEDIUM, HIGH, CRITICAL>
+	[Parameter(Mandatory=$FALSE)]
+	[string]$reportSeverity = "LOW, MEDIUM, HIGH, CRITICAL"
 )
 
 [string]$suppressFilename = $s
@@ -116,7 +120,16 @@ function Parse-Vulnerabilities([string]$name, $dependency){
 function Parse-Vulnerability([string]$name, $vulnerability){
 	[string]$message = Get-TestMessage $vulnerability
 	[string]$details = Clean-String($vulnerability.description)
-	Fail-Test $name $message $details
+    [string]$severity = Clean-String($vulnerability.severity)
+
+    $at = $reportSeverity.IndexOf($severity, 0, $reportSeverity.Length)
+    $reportSeverityMatches = $at -gt -1;
+
+    if ($reportSeverityMatches) {
+        Fail-Test $name $message $details
+    } else {
+        Write-Output ("WARN: Vulnarability found, but ignored because of severity level ({0}, {1}, {2}, {3})" -f $name, $message, $details, $severity)
+    }
 }
 
 function Parse-SuppressedVulnerability([string]$name, $vulnerability){

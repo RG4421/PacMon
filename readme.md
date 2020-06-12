@@ -17,3 +17,4 @@ Optional
 - **-s &lt;filename.xml&gt;** — overrides the default suppression XML file (suppress.xml)
 - **-h &lt;filename.html&gt;** — overrides the default vulnerability artifact report filename (vulnerability.html)
 - **-x &lt;filename.xml&gt;** — overrides the default temporary XML file (output.xml)
+- **-reportSeverity "&lt;LOW, MEDIUM, HIGH, CRITICAL&gt;**" — list of severities which will cause a build to fail. Can be any combination of LOW, MEDIUM, HIGH, CRITICAL
