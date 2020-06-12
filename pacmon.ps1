@@ -11,18 +11,10 @@ Param(
 	# -app <project title>
 	[Parameter(Mandatory=$FALSE)]
 	[string]$app = "PacMon",
-	
-	# -java <full path to java>
-	[Parameter(Mandatory=$FALSE)]
-	[string]$java = "java",	
 		
 	# -dc <relative path to dependency check>
 	[Parameter(Mandatory=$FALSE)]
 	[string]$dc = "dc",
-	
-	# -opts <java command line parameters>
-	[Parameter(Mandatory=$FALSE)]
-	[string]$opts,
 	
 	# -etc <dependency check command line parameters>
 	[Parameter(Mandatory=$FALSE)]
@@ -45,13 +37,11 @@ Param(
 [string]$xmlFilename = $x
 [string]$htmlFilename = $h
 
-[string]$javaCmd = '{0} {1}' -f $java, $opts
-
 ### END INIT PARAMS
 
 function Get-DependencyCheckArgs([string]$projectName, [string]$inputFilePath, [string]$outputFilePath, [string]$suppressionFilePath, [string]$additionalArgs){
 	$format = Get-FileExtensionFromPath $outputFilePath
-	[string]$dcArgs = '-a "{0}" -s "{1}" -o "{2}" -f "{3}"' -f $projectName, $inputFilePath, $outputFilePath, $format
+	[string]$dcArgs = '--project "{0}" --scan "{1}" --out "{2}" --format "{3}"' -f $projectName, $inputFilePath, $outputFilePath, $format
 	
 	if (Test-Path $suppressionFilePath) {
 		$dcArgs = '{0} --suppression "{1}"' -f $dcArgs, $suppressionFilePath
@@ -64,12 +54,11 @@ function Get-DependencyCheckArgs([string]$projectName, [string]$inputFilePath, [
 	$dcArgs
 }
 
-function Run-DependencyCheck([string]$javaCmd, [string]$dcPath, [string]$cmdLineArgs){
-	[string]$repoPath = '{0}\repo' -f $dcPath
-	[string]$classPath = '"{0}"\etc;"{1}"\commons-cli\commons-cli\1.2\commons-cli-1.2.jar;"{1}"\org\owasp\dependency-check-core\1.2.10\dependency-check-core-1.2.10.jar;"{1}"\org\apache\commons\commons-compress\1.9\commons-compress-1.9.jar;"{1}"\commons-io\commons-io\2.4\commons-io-2.4.jar;"{1}"\commons-lang\commons-lang\2.6\commons-lang-2.6.jar;"{1}"\org\apache\lucene\lucene-core\4.7.2\lucene-core-4.7.2.jar;"{1}"\org\apache\lucene\lucene-analyzers-common\4.7.2\lucene-analyzers-common-4.7.2.jar;"{1}"\org\apache\lucene\lucene-queryparser\4.7.2\lucene-queryparser-4.7.2.jar;"{1}"\org\apache\lucene\lucene-queries\4.7.2\lucene-queries-4.7.2.jar;"{1}"\org\apache\lucene\lucene-sandbox\4.7.2\lucene-sandbox-4.7.2.jar;"{1}"\org\apache\velocity\velocity\1.7\velocity-1.7.jar;"{1}"\commons-collections\commons-collections\3.2.1\commons-collections-3.2.1.jar;"{1}"\com\h2database\h2\1.3.176\h2-1.3.176.jar;"{1}"\org\jsoup\jsoup\1.7.2\jsoup-1.7.2.jar;"{1}"\org\owasp\dependency-check-utils\1.2.10\dependency-check-utils-1.2.10.jar;"{1}"\org\owasp\dependency-check-cli\1.2.10\dependency-check-cli-1.2.10.jar' -f $dcPath, $repoPath						  
-	$command = '{0} -classpath {1} -Dapp.name="dependency-check" -Dapp.repo="{2}" -Dapp.home="{3}" -Dbasedir="{3}" org.owasp.dependencycheck.App {4}' -f $javaCmd, $classPath, $repoPath, $dcPath, $cmdLineArgs
-	Write-Output ("Executing: cmd.exe /C {0}" -f $command)
-	& cmd.exe /C $command
+function Run-DependencyCheck([string]$dcPath, [string]$cmdLineArgs){
+	$command = '/c {0}\bin\dependency-check.bat {1}' -f $dcPath, $cmdLineArgs
+	Write-Output ("Executing: cmd.exe {0}" -f $command)
+	& cmd.exe $command
+    Write-Output ("Finished executing")
 }
 
 function Validate-Dependencies([string]$xmlPath) {
@@ -219,14 +208,13 @@ function Set-PSConsole {
 
 [string]$basePath = Get-ScriptDirectory
 [string]$dcPath = '{0}\{1}' -f $basePath, $dc
-[string]$inputPath = '{0}\{1}' -f $basePath, $target
 [string]$xmlPath = '{0}\{1}' -f $basePath, $xmlFilename
 [string]$htmlPath = '{0}\{1}' -f $basePath, $htmlFilename
 [string]$suppressPath = '{0}\{1}' -f $basePath, $suppressFilename
 
-$scanArgs = Get-DependencyCheckArgs $app $inputPath $xmlPath $suppressPath $etc
+$scanArgs = Get-DependencyCheckArgs $app $target $xmlPath $suppressPath $etc
 
-Run-DependencyCheck $javaCmd $dcPath $scanArgs
+Run-DependencyCheck $dcPath $scanArgs
 
 $dependencies = Validate-Dependencies $xmlPath
 
@@ -238,8 +226,8 @@ Delete-File $xmlPath
 
 if (Has-Vulnerability $dependencies) {
 	Write-Output ("Vulnerability found -- generating report artifact: {0}" -f $htmlFilename)
-	[string]$artifactArgs = Get-DependencyCheckArgs $app $inputPath $htmlPath $suppressPath $etc
-	Run-DependencyCheck $javaCmd $dcPath $artifactArgs
+	[string]$artifactArgs = Get-DependencyCheckArgs $app $target $htmlPath $suppressPath $etc
+	Run-DependencyCheck $dcPath $artifactArgs
 }
 
 exit(0)
